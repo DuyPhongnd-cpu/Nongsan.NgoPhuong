@@ -283,7 +283,7 @@
                     <div class="product-meta">Đóng gói: <b>{{ p.packaging }}</b></div>
                     <div class="product-foot">
                         <div class="product-price">{{ "{:,.0f}".format(p.price) }} đ</div>
-                        <form action="{{ url_for('add-to-cart', product_id=p.id) }}" method="POST">
+                        <form action="{{ url_for('add_to_cart', product_id=p.id) }}" method="POST">
                             <button type="submit" class="btn-buy" title="Thêm vào giỏ hàng"><i class="fa-solid fa-cart-plus"></i></button>
                         </form>
                     </div>

@@ -87,7 +87,7 @@
                 <tr><td>Bảo quản</td><td>{{ product.storage }}</td></tr>
             </table>
 
-            <form action="{{ url_for('add-to-cart', product_id=product.id) }}" method="POST">
+            <form action="{{ url_for('add_to_cart', product_id=product.id) }}" method="POST">
                 <div class="qty-wrap">
                     <input type="number" name="qty" value="1" min="1" class="qty-input">
                     <button type="submit" class="btn-primary" style="padding: 12px 30px;"><i class="fa-solid fa-cart-plus"></i> Thêm Vào Giỏ Hàng</button>

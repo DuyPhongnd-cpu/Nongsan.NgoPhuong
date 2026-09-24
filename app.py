@@ -1,72 +1,35 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 import os
+from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "nongsan_ngo_phuong_secret_key_2026"
+app.secret_key = "***"
 
-# ---------------------------------------------------------
-# 1. TÀI KHOẢN VÀ BẢO MẬT PHÂN QUYỀN (RBAC)
-# ---------------------------------------------------------
-# Cấu hình tài khoản:
-# - Admin: Quản lý toàn quyền, duyệt tài khoản đối tác, quản lý đơn hàng & sản phẩm.
-# - Đối tác: Đăng ký / Đăng nhập, chỉ khi được Admin phê duyệt (approved=True) mới được đăng sản phẩm.
 USERS = {
-    "admin": {
-        "password": "Vtc@123Admin",
-        "role": "SUPER_ADMIN",
-        "name": "Super Admin Ngọ Phượng",
-        "approved": True
-    },
-    "nhanvien": {
-        "password": "NhanVien@2026",
-        "role": "NHAN_VIEN",
-        "name": "Nhân Viên Bán Hàng",
-        "approved": True
-    },
-    "doitac_mocchau": {
-        "password": "DoiTac@MocChau",
-        "role": "DOI_TAC",
-        "name": "HTX Nông Sản Mộc Châu",
-        "approved": True
-    },
-    "doitac_dalat": {
-        "password": "DoiTac@DaLat",
-        "role": "DOI_TAC",
-        "name": "Nông Trại Xanh Đà Lạt",
-        "approved": False  # Chờ Admin duyệt
-    }
+    "admin": {"password": "***", "role": "SUPER_ADMIN", "name": "Super Admin Ngọ Phượng", "approved": True},
+    "nhanvien": {"password": "***", "role": "NHAN_VIEN", "name": "Nhân Viên Bán Hàng", "approved": True},
+    "doitac_mocchau": {"password": "***", "role": "DOI_TAC", "name": "HTX Nông Sản Mộc Châu", "approved": True},
+    "doitac_dalat": {"password": "***", "role": "DOI_TAC", "name": "Nông Trại Xanh Đà Lạt", "approved": False}
 }
 
-# ---------------------------------------------------------
-# 2. DANH SÁCH SẢN PHẨM NÔNG SẢN ĐẶC SẢN MỞ RỘNG (24 SẢN PHẨM)
-# ---------------------------------------------------------
 PRODUCTS = [
-    # Nhóm Mật ong
     {"id": 1, "group": "Mật ong", "name": "Mật ong cỏ kim Cao Bằng", "price": 220000, "packaging": "Chai 500ml", "rating": 5, "origin": "Hà Giang - Cao Bằng", "ingredients": "100% mật hoa cỏ kim tự nhiên", "process": "Quay li tâm thủ công", "usage": "Pha nước ấm uống mỗi sáng", "storage": "Nơi khô ráo, thoáng mát"},
     {"id": 2, "group": "Mật ong", "name": "Mật ong bạc hà Hà Giang", "price": 350000, "packaging": "Chai 500ml", "rating": 5, "origin": "Cao nguyên đá Đồng Văn", "ingredients": "Mật hoa bạc hà tự nhiên", "process": "Thu hoạch chính vụ đông", "usage": "Uống trực tiếp, pha trà thảo mộc", "storage": "Nhiệt độ phòng, tránh ánh nắng"},
     {"id": 3, "group": "Mật ong", "name": "Mật ong Sú vẹt Giao Thủy", "price": 250000, "packaging": "Chai 500ml", "rating": 5, "origin": "Vườn quốc gia Xuân Thủy", "ingredients": "Mật hoa sú vẹt rừng ngập mặn", "process": "Khai thác tự nhiên sạch", "usage": "Bồi bổ sức khỏe, tăng đề kháng", "storage": "Nơi khô ráo, thoáng mát"},
     {"id": 4, "group": "Mật ong", "name": "Mật ong hoa nhãn Hưng Yên", "price": 180000, "packaging": "Chai 500ml", "rating": 5, "origin": "Hưng Yên", "ingredients": "100% mật hoa nhãn thơm lừng", "process": "Quay mật chuẩn VietGAP", "usage": "Pha nước giải khát, chế biến món ăn", "storage": "Tránh nắng trực tiếp"},
-    
-    # Nhóm Nghệ & Tinh bột
     {"id": 5, "group": "Nghệ & Thảo dược", "name": "Tinh bột nghệ vàng Nghệ An", "price": 200000, "packaging": "Hũ 500g", "rating": 5, "origin": "Nghệ An", "ingredients": "Nghệ vàng củ tươi nguyên chất", "process": "Lọc tách xơ, dầu và tạp chất", "usage": "Uống cùng mật ong ấm trị đau dạ dày", "storage": "Đậy kín hũ sau khi dùng"},
     {"id": 6, "group": "Nghệ & Thảo dược", "name": "Tinh bột nghệ đen Nghệ An", "price": 220000, "packaging": "Hũ 500g", "rating": 5, "origin": "Nghệ An", "ingredients": "Nghệ đen nguyên chất 100%", "process": "Sấy lạnh công nghệ cao", "usage": "Hỗ trợ tiêu hóa, bồi bổ phụ nữ sau sinh", "storage": "Bảo quản nơi mát mẻ"},
     {"id": 7, "group": "Nghệ & Thảo dược", "name": "Bột sắn dây ướp hoa bưởi", "price": 160000, "packaging": "Túi zip 500g", "rating": 5, "origin": "Kinh Môn - Hải Dương", "ingredients": "Củ sắn dây ta, hoa bưởi tươi", "process": "Lọc lắng 25 lần, sấy khô tiệt trùng", "usage": "Pha uống sống hoặc nấu chín thanh nhiệt", "storage": "Bảo quản nơi khô ráo"},
-
-    # Nhóm Ngũ cốc & Hạt dinh dưỡng
     {"id": 8, "group": "Ngũ cốc dinh dưỡng", "name": "Ngũ cốc Lúa mạch nguyên cám", "price": 110000, "packaging": "Hũ 500g", "rating": 5, "origin": "Đồng bằng sông Hồng", "ingredients": "Lúa mạch nguyên cám giàu xơ", "process": "Rang sấy nhiệt thấp giữ nguyên vitamin", "usage": "Ăn kèm sữa chua, sữa hạt", "storage": "Đậy kín nắp hộp"},
     {"id": 9, "group": "Ngũ cốc dinh dưỡng", "name": "Ngũ cốc Bắp ngô sấy giòn", "price": 90000, "packaging": "Gói 500g", "rating": 5, "origin": "Mộc Châu - Sơn La", "ingredients": "Ngô ngọt tự nhiên không đường hóa học", "process": "Sấy thăng hoa giòn rụm", "usage": "Bữa sáng nhẹ, ăn vặt lành mạnh", "storage": "Nơi khô ráo"},
     {"id": 10, "group": "Ngũ cốc dinh dưỡng", "name": "Ngũ cốc Lúa mỳ dinh dưỡng", "price": 105000, "packaging": "Gói 500g", "rating": 5, "origin": "Phú Thọ", "ingredients": "Lúa mỳ nguyên cám chọn lọc", "process": "Nghiền sấy tiệt trùng", "usage": "Chế độ ăn kiêng, tập gym", "storage": "Nơi thoáng mát"},
     {"id": 11, "group": "Ngũ cốc dinh dưỡng", "name": "Ngũ cốc Granola Siêu Hạt", "price": 175000, "packaging": "Hũ 500g", "rating": 5, "origin": "Tây Nguyên", "ingredients": "Hạt điều, óc chó, macca, hạnh nhân, yến mạch", "process": "Nướng mật ong nguyên chất", "usage": "Ăn liền cùng sữa chua, sinh tố", "storage": "Ngăn mát tủ lạnh sau mở nắp"},
     {"id": 12, "group": "Ngũ cốc dinh dưỡng", "name": "Hạt Macca sấy nứt vỏ Đắk Lắk", "price": 160000, "packaging": "Hũ 500g", "rating": 5, "origin": "Đắk Lắk", "ingredients": "100% hạt macca size đại VIP", "process": "Sấy nứt tự nhiên kèm dụng cụ tách", "usage": "Ăn trực tiếp 5-10 hạt mỗi ngày", "storage": "Nơi khô ráo, đậy kín"},
-
-    # Nhóm Chè & Đặc sản món ngon
     {"id": 13, "group": "Chè & Món ngọt đặc sản", "name": "Chè bưởi thơm ngon An Giang", "price": 35000, "packaging": "Cốc 350ml", "rating": 5, "origin": "An Giang", "ingredients": "Cùi bưởi giòn sần sật, nước cốt dừa béo ngậy", "process": "Khử đắng thủ công gia truyền", "usage": "Ăn kèm đá lạnh giải khát", "storage": "Bảo quản ngăn mát 2-3 ngày"},
     {"id": 14, "group": "Chè & Món ngọt đặc sản", "name": "Chè bắp nước cốt dừa Hội An", "price": 30000, "packaging": "Cốc 350ml", "rating": 5, "origin": "Hội An", "ingredients": "Bắp non dẻo ngọt, cốt dừa tươi", "process": "Nấu bắp ninh dẻo sánh thơm", "usage": "Dùng tráng miệng, giải nhiệt", "storage": "Dùng trong ngày"},
     {"id": 15, "group": "Chè & Món ngọt đặc sản", "name": "Chè hạt sen long nhãn Phố Hiến", "price": 45000, "packaging": "Cốc 350ml", "rating": 5, "origin": "Huế - Hưng Yên", "ingredients": "Hạt sen bở tơi, long nhãn tiến vua, đường phèn", "process": "Lồng nhãn thủ công nấu mềm ngọt thanh", "usage": "An thần, thanh nhiệt, ngủ ngon", "storage": "Bảo quản ngăn mát tủ lạnh"},
     {"id": 16, "group": "Chè & Món ngọt đặc sản", "name": "Chè đậu xanh cốt dừa truyền thống", "price": 25000, "packaging": "Cốc 350ml", "rating": 5, "origin": "Hà Nội", "ingredients": "Đậu xanh tiêu xay vỡ, cốt dừa Bến Tre", "process": "Nấu sánh dẻo thơm ngậy", "usage": "Thanh nhiệt mùa hè", "storage": "Bảo quản mát"},
     {"id": 17, "group": "Chè & Món ngọt đặc sản", "name": "Chè đậu đen xanh lòng dầm đá", "price": 25000, "packaging": "Cốc 350ml", "rating": 5, "origin": "Hà Nội", "ingredients": "Đậu đen xanh lòng hảo hạng", "process": "Ninh nhừ tơi hạt, ngọt thanh", "usage": "Bổ thận, mát gan, giải độc", "storage": "Dùng ngon trong ngày"},
-
-    # Nhóm Nông sản sấy & Mùa vụ
     {"id": 18, "group": "Nông sản mùa vụ & Trà", "name": "Thạch đen Cao Bằng (Sương sáo)", "price": 45000, "packaging": "Hộp 1kg", "rating": 5, "origin": "Thạch An - Cao Bằng", "ingredients": "Cây thạch đen tự nhiên vùng núi", "process": "Nấu thủ công theo công thức Tày - Nùng", "usage": "Cắt miếng ăn kèm chè, sữa tươi, sữa đậu", "storage": "Ngăn mát tủ lạnh 5-7 ngày"},
     {"id": 19, "group": "Nông sản mùa vụ & Trà", "name": "Trà Shan Tuyết cổ thụ Suối Giàng", "price": 250000, "packaging": "Hộp 200g", "rating": 5, "origin": "Yên Bái", "ingredients": "1 búp 1 lá chè cổ thụ trên 300 năm", "process": "Sao tay truyền thống của đồng bào Mông", "usage": "Pha nước sôi 85°C thưởng thức", "storage": "Bảo quản nơi khô ráo, tránh mùi lạ"},
     {"id": 20, "group": "Nông sản mùa vụ & Trà", "name": "Hồng sấy treo gió Mộc Châu", "price": 190000, "packaging": "Hộp 500g", "rating": 5, "origin": "Mộc Châu", "ingredients": "Hồng trứng tuyển chọn vỏ mỏng", "process": "Treo gió tự nhiên theo công nghệ Nhật Bản", "usage": "Ăn trực tiếp thưởng thức mật hồng dẻo", "storage": "Bảo quản tủ mát"},
@@ -76,22 +39,16 @@ PRODUCTS = [
     {"id": 24, "group": "Nông sản mùa vụ & Trà", "name": "Gạo Séng Cù Mường Lò dẻo thơm", "price": 185000, "packaging": "Túi 5kg", "rating": 5, "origin": "Mường Lò - Nghĩa Lộ", "ingredients": "Lúa Séng Cù trồng ruộng bậc thang", "process": "Xát mộc giữ trọn lớp cám dưỡng chất", "usage": "Nấu cơm dẻo ngọt đậm đà", "storage": "Thùng đậy kín chống ẩm"}
 ]
 
-# ---------------------------------------------------------
-# 3. BÀI VIẾT NÔNG SẢN TỪNG NGÀY
-# ---------------------------------------------------------
 ARTICLES = [
-    {"date": "23/09/2026", "title": "Bí quyết chọn Mật ong hoa rừng chuẩn vị mùa vụ mới", "snippet": "Mật ong tự nhiên đặm đà, thơm dịu và cách phân biệt mật ong nguyên chất với mật pha đường..."},
-    {"date": "22/09/2026", "title": "Công dụng tuyệt vời của Tinh bột nghệ vàng kết hợp mật ong", "snippet": "Uống tinh bột nghệ kết hợp mật ong mỗi sáng giúp bảo vệ niêm mạc dạ dày và dưỡng da trắng mịn..."},
-    {"date": "21/09/2026", "title": "Ngũ cốc Granola siêu hạt - Bữa sáng nhanh gọn tràn đầy năng lượng", "snippet": "Sự kết hợp hoàn hảo giữa hạt điều, hạnh nhân, óc chó và yến mạch cho người bận rộn..."},
-    {"date": "20/09/2026", "title": "Hành trình mang đặc sản vùng cao Tây Bắc về với bàn ăn phố thị", "snippet": "Những sản phẩm OCOP đạt chuẩn hữu cơ từ các hợp tác xã vùng cao được kiểm định nghiêm ngặt..."}
+    {"date": "24/09/2026", "title": "Bí quyết chọn Mật ong hoa rừng chuẩn vị mùa vụ mới", "snippet": "Mật ong tự nhiên đặm đà, thơm dịu và cách phân biệt mật ong nguyên chất với mật pha đường..."},
+    {"date": "23/09/2026", "title": "Công dụng tuyệt vời của Tinh bột nghệ vàng kết hợp mật ong", "snippet": "Uống tinh bột nghệ kết hợp mật ong mỗi sáng giúp bảo vệ niêm mạc dạ dày và dưỡng da trắng mịn..."},
+    {"date": "22/09/2026", "title": "Ngũ cốc Granola siêu hạt - Bữa sáng nhanh gọn tràn đầy năng lượng", "snippet": "Sự kết hợp hoàn hảo giữa hạt điều, hạnh nhân, óc chó và yến mạch cho người bận rộn..."},
+    {"date": "21/09/2026", "title": "Hành trình mang đặc sản vùng cao Tây Bắc về với bàn ăn phố thị", "snippet": "Những sản phẩm OCOP đạt chuẩn hữu cơ từ các hợp tác xã vùng cao được kiểm định nghiêm ngặt..."}
 ]
 
 ORDERS = []
 MESSAGES = []
 
-# ---------------------------------------------------------
-# 4. CÁC ROUTE PHỤC VỤ KHÁCH HÀNG (SHOPPING FLOW)
-# ---------------------------------------------------------
 @app.route("/")
 def home():
     cart = session.get("cart", {})
@@ -115,7 +72,7 @@ def product_detail(product_id):
     related = [p for p in PRODUCTS if p["group"] == product["group"] and p["id"] != product["id"]][:4]
     return render_template("detail.html", product=product, related=related, cart_count=cart_count)
 
-@app.route("/add-to-cart/<int:product_id>", methods=["POST"])
+@app.route("/add_to_cart/<int:product_id>", methods=["POST"])
 def add_to_cart(product_id):
     qty = int(request.form.get("qty", 1))
     cart = session.get("cart", {})
@@ -206,20 +163,15 @@ def contact():
     flash("Cảm ơn bạn! Thông tin liên hệ đã được gửi đến Ban Quản trị Nông Sản Ngọ Phượng.")
     return redirect(url_for("home"))
 
-# ---------------------------------------------------------
-# 5. CỔNG ĐĂNG NHẬP RIÊNG BIỆT CHO ĐỐI TÁC & ADMIN (/portal hoặc /login)
-# (Ẩn hoàn toàn khỏi trang chủ, chỉ người có tài khoản mới truy cập)
-# ---------------------------------------------------------
 @app.route("/portal", methods=["GET", "POST"])
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
+        password = ***"password", "").strip()
         
         user = USERS.get(username)
         if user and user["password"] == password:
-            # Kiểm tra duyệt quyền
             if user["role"] == "DOI_TAC" and not user.get("approved", False):
                 flash("⚠️ Tài khoản Đối tác của bạn đang CHỜ ADMIN PHÊ DUYỆT. Vui lòng liên hệ Admin để được kích hoạt quyền đăng sản phẩm!", "warning")
                 return render_template("login.html")
@@ -236,11 +188,10 @@ def login():
             flash("❌ Tên đăng nhập hoặc mật khẩu không chính xác!", "danger")
     return render_template("login.html")
 
-# Route Đăng ký tài khoản Đối Tác Cung Cấp
 @app.route("/register-partner", methods=["POST"])
 def register_partner():
     partner_user = request.form.get("partner_user", "").strip()
-    partner_pass = request.form.get("partner_pass", "").strip()
+    partner_pass = ***"partner_pass", "").strip()
     partner_name = request.form.get("partner_name", "").strip()
     partner_phone = request.form.get("partner_phone", "").strip()
     
@@ -252,7 +203,7 @@ def register_partner():
         "password": partner_pass,
         "role": "DOI_TAC",
         "name": f"{partner_name} (SĐT: {partner_phone})",
-        "approved": False # Cần Admin duyệt mới được đăng bài
+        "approved": False
     }
     flash("🎉 Đăng ký tài khoản Đối tác thành công! Vui lòng chờ Admin phê duyệt để bắt đầu đăng sản phẩm.", "success")
     return redirect(url_for("login"))
@@ -263,9 +214,6 @@ def logout():
     flash("Đã đăng xuất khỏi phiên làm việc.")
     return redirect(url_for("home"))
 
-# ---------------------------------------------------------
-# 6. TRANG QUẢN TRỊ ADMIN / DASHBOARD ĐỐI TÁC
-# ---------------------------------------------------------
 @app.route("/admin")
 def admin_dashboard():
     user = session.get("user")
@@ -281,7 +229,6 @@ def admin_dashboard():
         user=user
     )
 
-# Phê duyệt quyền đăng bài cho Đối tác (Chỉ Super Admin)
 @app.route("/admin/approve-partner/<username>", methods=["POST"])
 def approve_partner(username):
     user = session.get("user")
@@ -293,7 +240,6 @@ def approve_partner(username):
         flash(f"✅ Đã phê duyệt cấp quyền đăng sản phẩm thành công cho đối tác: {USERS[username]['name']}")
     return redirect(url_for("admin_dashboard"))
 
-# Thu hồi quyền Đối tác
 @app.route("/admin/revoke-partner/<username>", methods=["POST"])
 def revoke_partner(username):
     user = session.get("user")
@@ -305,14 +251,12 @@ def revoke_partner(username):
         flash(f"🔒 Đã tạm dừng quyền đăng bài của đối tác: {USERS[username]['name']}")
     return redirect(url_for("admin_dashboard"))
 
-# Đăng sản phẩm mới (Dành cho Admin & Đối tác ĐÃ ĐƯỢC DUYỆT)
 @app.route("/admin/add-product", methods=["POST"])
 def admin_add_product():
     user = session.get("user")
     if not user:
         return redirect(url_for("login"))
         
-    # Kiểm tra quyền: Phải là Admin hoặc Đối tác đã được Approved
     is_admin = user["role"] in ["SUPER_ADMIN", "NHAN_VIEN"]
     is_approved_partner = (user["role"] == "DOI_TAC" and USERS.get(user["username"], {}).get("approved", False))
     
@@ -348,7 +292,6 @@ def admin_add_product():
     flash(f"🎉 Đã đăng thành công sản phẩm: {name}!")
     return redirect(url_for("admin_dashboard"))
 
-# Cập nhật trạng thái đơn hàng
 @app.route("/admin/update-order/<int:order_id>", methods=["POST"])
 def update_order_status(order_id):
     user = session.get("user")
@@ -363,5 +306,4 @@ def update_order_status(order_id):
     return redirect(url_for("admin_dashboard"))
 
 if __name__ == "__main__":
-    # Chạy trên tất cả IP, port 5000
     app.run(debug=True, host="0.0.0.0", port=5000)
