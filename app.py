@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "***"
+app.secret_key = os.environ.get("SECRET_KEY", "nongsan_ngophuong_secret_key_2026")
 
 USERS = {
     "admin": {"password": "***", "role": "SUPER_ADMIN", "name": "Super Admin Ngọ Phượng", "approved": True},
@@ -172,7 +172,7 @@ def login():
         
         user = USERS.get(username)
         if user and user["password"] == password:
-            if user["role"] == "DOI_TAC" and not user.get("approved", False):
+            *** user["role"] == "DOI_TAC" and not user.get("approved", False):
                 flash("⚠️ Tài khoản Đối tác của bạn đang CHỜ ADMIN PHÊ DUYỆT. Vui lòng liên hệ Admin để được kích hoạt quyền đăng sản phẩm!", "warning")
                 return render_template("login.html")
                 
@@ -306,4 +306,5 @@ def update_order_status(order_id):
     return redirect(url_for("admin_dashboard"))
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
